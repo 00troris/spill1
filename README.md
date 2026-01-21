@@ -1,162 +1,215 @@
-v<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Clicker Spill</title>
+<title>Cookie Clicker</title>
 <style>
     body {
         font-family: Arial, sans-serif;
-        background: #111;
-        color: #eee;
+        background: #222;
+        color: #f5f5f5;
         text-align: center;
+        margin: 0;
+        padding: 0;
     }
+    h1 {
+        margin-top: 20px;
+    }
+    #cookie {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #f7d7a8, #c58b4e);
+        margin: 20px auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.05s;
+    }
+    #cookie:active {
+        transform: scale(0.95);
+    }
+    .chip {
+        width: 20px;
+        height: 20px;
+        background: #3b2a1a;
+        border-radius: 50%;
+        position: absolute;
+    }
+    .chip:nth-child(1) { top: 40px; left: 60px; }
+    .chip:nth-child(2) { top: 80px; left: 120px; }
+    .chip:nth-child(3) { top: 130px; left: 80px; }
+    .chip:nth-child(4) { top: 60px; left: 130px; }
+    .chip:nth-child(5) { top: 120px; left: 40px; }
+
+    .stats {
+        margin: 10px 0;
+    }
+
+    .container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        padding: 20px;
+        flex-wrap: wrap;
+    }
+
+    .box {
+        background: #333;
+        border: 1px solid #555;
+        padding: 15px;
+        width: 280px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
     button {
         padding: 8px;
-        margin: 4px;
+        margin: 4px 0;
+        width: 100%;
         cursor: pointer;
+        border: none;
+        background: #ffb347;
+        color: #222;
+        font-weight: bold;
+        border-radius: 4px;
+        transition: background 0.2s;
     }
-    .box {
-        border: 1px solid #444;
-        padding: 10px;
-        margin: 10px;
-        background: #1c1c1c;
+    button:hover {
+        background: #ff9800;
+    }
+    button:disabled {
+        background: #777;
+        cursor: not-allowed;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+        text-align: left;
+        font-size: 14px;
     }
 </style>
 </head>
 <body>
 
-<h1>🔥 Clicker Spill 🔥</h1>
+<h1>🍪 Cookie Clicker</h1>
 
-<h2>Poeng: <span id="points">0</span></h2>
-<h3>Per klikk: <span id="perClick">1</span></h3>
-<h3>Per sekund: <span id="perSecond">0</span></h3>
-
-<button id="clickBtn">Klikk!</button>
-
-<div class="box">
-    <h2>⬆ Oppgraderinger (30)</h2>
-    <div id="upgrades"></div>
+<div id="cookie">
+    <div class="chip"></div>
+    <div class="chip"></div>
+    <div class="chip"></div>
+    <div class="chip"></div>
+    <div class="chip"></div>
 </div>
 
-<div class="box">
-    <h2>🌌 Ascension</h2>
-    <p>Ascensions: <span id="ascensions">0</span></p>
-    <p>Kostnad: <span id="ascCost">100000</span></p>
-    <button id="ascendBtn">Ascend</button>
+<div class="stats">
+    <h2>Cookies: <span id="cookies">0</span></h2>
+    <p>Per klikk: <span id="perClick">1</span></p>
+    <p>Per sekund: <span id="perSecond">0</span></p>
 </div>
 
-<div class="box">
-    <h2>🏆 Achievements (20)</h2>
-    <ul id="achievements"></ul>
+<div class="container">
+    <div class="box">
+        <h2>🛒 Butikk</h2>
+        <div id="shop"></div>
+    </div>
+
+    <div class="box">
+        <h2>🏆 Achievements</h2>
+        <ul id="achievements"></ul>
+    </div>
 </div>
 
 <script>
-/* ===== SPILLDATA ===== */
-let points = 0;
+let cookies = 0;
 let perClick = 1;
 let perSecond = 0;
 
-let ascensions = 0;
-let ascensionCost = 100000;
+const upgrades = [
+    { name: "Bedre klikk", type: "click", level: 0, baseCost: 10, cost: 10, bonus: 1 },
+    { name: "Super klikk", type: "click", level: 0, baseCost: 100, cost: 100, bonus: 5 },
+    { name: "Bestemor", type: "passive", level: 0, baseCost: 50, cost: 50, bonus: 1 },
+    { name: "Fabrikk", type: "passive", level: 0, baseCost: 500, cost: 500, bonus: 5 }
+];
 
-const upgrades = Array.from({ length: 30 }, (_, i) => ({
-    name: `Oppgradering ${i + 1}`,
-    level: 0,
-    baseCost: 10 * (i + 1) ** 2,
-    cost: 10 * (i + 1) ** 2,
-    clickBonus: i < 15 ? i + 1 : 0,
-    passiveBonus: i >= 15 ? i - 14 : 0
-}));
+const achievements = [
+    { name: "Første cookie", requirement: 1, unlocked: false },
+    { name: "100 cookies", requirement: 100, unlocked: false },
+    { name: "1 000 cookies", requirement: 1000, unlocked: false },
+    { name: "10 000 cookies", requirement: 10000, unlocked: false }
+];
 
-const achievements = Array.from({ length: 20 }, (_, i) => ({
-    name: `Achievement ${i + 1}`,
-    unlocked: false,
-    requirement: (i + 1) * 1000
-}));
+const cookieEl = document.getElementById("cookie");
+const cookiesEl = document.getElementById("cookies");
+const perClickEl = document.getElementById("perClick");
+const perSecondEl = document.getElementById("perSecond");
+const shopEl = document.getElementById("shop");
+const achievementsEl = document.getElementById("achievements");
 
-/* ===== FUNKSJONER ===== */
-function clickPoint() {
-    points += perClick;
+cookieEl.addEventListener("click", () => {
+    cookies += perClick;
     update();
-}
+});
 
-function buyUpgrade(i) {
-    const u = upgrades[i];
-    if (points < u.cost) return;
+function buyUpgrade(index) {
+    const u = upgrades[index];
+    if (cookies < u.cost) return;
 
-    points -= u.cost;
+    cookies -= u.cost;
     u.level++;
-    u.cost = Math.floor(u.cost * 1.5);
+    u.cost = Math.floor(u.baseCost * Math.pow(1.5, u.level));
 
-    perClick += u.clickBonus;
-    perSecond += u.passiveBonus;
+    if (u.type === "click") {
+        perClick += u.bonus;
+    } else if (u.type === "passive") {
+        perSecond += u.bonus;
+    }
 
     update();
 }
 
-function buyAscension() {
-    if (points < ascensionCost) return;
-
-    ascensions++;
-    points = 0;
-    perClick = 1 + ascensions;
-    perSecond = 0;
-
-    ascensionCost = Math.floor(ascensionCost * 2);
-
+function renderShop() {
+    shopEl.innerHTML = "";
     upgrades.forEach((u, i) => {
-        u.level = 0;
-        u.cost = u.baseCost;
+        const btn = document.createElement("button");
+        btn.textContent = `${u.name} (Lvl ${u.level}) – Kostnad: ${u.cost}`;
+        btn.disabled = cookies < u.cost;
+        btn.onclick = () => buyUpgrade(i);
+        shopEl.appendChild(btn);
     });
-
-    update();
 }
 
 function checkAchievements() {
     achievements.forEach(a => {
-        if (!a.unlocked && points >= a.requirement) {
+        if (!a.unlocked && cookies >= a.requirement) {
             a.unlocked = true;
         }
     });
 }
 
-function update() {
-    document.getElementById("points").textContent = Math.floor(points);
-    document.getElementById("perClick").textContent = perClick;
-    document.getElementById("perSecond").textContent = perSecond;
-    document.getElementById("ascensions").textContent = ascensions;
-    document.getElementById("ascCost").textContent = ascensionCost;
+function renderAchievements() {
+    achievementsEl.innerHTML = "";
+    achievements.forEach(a => {
+        const li = document.createElement("li");
+        li.textContent = `${a.unlocked ? "✅" : "❌"} ${a.name}`;
+        achievementsEl.appendChild(li);
+    });
+}
 
-    renderUpgrades();
+function update() {
+    cookiesEl.textContent = Math.floor(cookies);
+    perClickEl.textContent = perClick;
+    perSecondEl.textContent = perSecond;
+
+    checkAchievements();
+    renderShop();
     renderAchievements();
 }
 
-function renderUpgrades() {
-    const container = document.getElementById("upgrades");
-    container.innerHTML = upgrades.map((u, i) =>
-        `<button onclick="buyUpgrade(${i})">
-            ${u.name} (Lvl ${u.level}) – Kostnad: ${u.cost}
-        </button>`
-    ).join("");
-}
-
-function renderAchievements() {
-    checkAchievements();
-    const list = document.getElementById("achievements");
-    list.innerHTML = achievements.map(a =>
-        `<li>${a.unlocked ? "✅" : "❌"} ${a.name}</li>`
-    ).join("");
-}
-
-/* ===== PASSIV INNTEKT ===== */
 setInterval(() => {
-    points += perSecond;
+    cookies += perSecond;
     update();
 }, 1000);
-
-/* ===== EVENT LISTENERS ===== */
-document.getElementById("clickBtn").onclick = clickPoint;
-document.getElementById("ascendBtn").onclick = buyAscension;
 
 update();
 </script>
