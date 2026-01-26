@@ -2,10 +2,10 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Enkelt Tower Defence</title>
+<title>Forbedret Tower Defence</title>
 <style>
     body {
-        background: #222;
+        background: #1e1e1e;
         color: #eee;
         font-family: Arial, sans-serif;
         text-align: center;
@@ -22,6 +22,7 @@
         border: 3px solid #555;
         display: block;
         margin: 0 auto;
+        cursor: crosshair;
     }
     #ui {
         margin-top: 10px;
@@ -29,15 +30,25 @@
     #ui span {
         margin: 0 10px;
     }
-    #info {
-        font-size: 0.9rem;
-        margin-top: 5px;
-        color: #ccc;
+    #towerMenu {
+        margin-top: 10px;
     }
+    .towerBtn {
+        padding: 8px 12px;
+        margin: 5px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: white;
+    }
+    .normal { background: #4a90e2; }
+    .fast { background: #50e3c2; }
+    .heavy { background: #e94e77; }
 </style>
 </head>
 <body>
-<h1>Mini Tower Defence</h1>
+
+<h1>Forbedret Tower Defence</h1>
 
 <div id="gameContainer">
     <canvas id="game" width="640" height="480"></canvas>
@@ -45,12 +56,14 @@
 
 <div id="ui">
     <span>Liv: <strong id="lives">20</strong></span>
-    <span>Penger: <strong id="money">100</strong></span>
+    <span>Penger: <strong id="money">150</strong></span>
     <span>Bølge: <strong id="wave">1</strong></span>
-    <span>Tårnpris: <strong>50</strong></span>
 </div>
-<div id="info">
-    Klikk på gresset for å plassere tårn. Ikke på stien. Fiender følger den lyse stien.
+
+<div id="towerMenu">
+    <button class="towerBtn normal" onclick="selectTower('normal')">Normal (50)</button>
+    <button class="towerBtn fast" onclick="selectTower('fast')">Rask (70)</button>
+    <button class="towerBtn heavy" onclick="selectTower('heavy')">Tung (100)</button>
 </div>
 
 <script>
@@ -61,20 +74,22 @@ const TILE = 40;
 const ROWS = canvas.height / TILE;
 const COLS = canvas.width / TILE;
 
-// Enkel sti (liste med grid-koordinater)
-const path = [
-    {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},
-    {x:5,y:5},{x:6,y:5},{x:7,y:5},{x:8,y:5},{x:9,y:5},
-    {x:10,y:5},{x:11,y:5},{x:12,y:5},{x:13,y:5},{x:14,y:5},
-    {x:15,y:5}
-];
+let selectedTower = "normal";
+
+function selectTower(type) {
+    selectedTower = type;
+}
+
+// Sti
+const path = [];
+for (let x = 0; x < 16; x++) path.push({x, y: 5});
 
 let towers = [];
 let enemies = [];
 let bullets = [];
 
 let lives = 20;
-let money = 100;
+let money = 150;
 let wave = 1;
 let spawnTimer = 0;
 let enemiesToSpawn = 10;
@@ -93,53 +108,69 @@ class Enemy {
         const start = gridToPixel(path[0]);
         this.x = start.x;
         this.y = start.y;
-        this.speed = 1 + wave * 0.1;
+
+        this.speed = 1 + Math.random() * 0.5 + wave * 0.05;
         this.radius = 12;
-        this.hp = 20 + wave * 5;
+        this.hp = 20 + wave * 6 + Math.random() * 10;
         this.maxHp = this.hp;
     }
     update() {
-        const targetGrid = path[this.pathIndex + 1];
-        if (!targetGrid) {
+        const next = path[this.pathIndex + 1];
+        if (!next) {
             lives--;
             this.hp = 0;
             return;
         }
-        const target = gridToPixel(targetGrid);
+        const target = gridToPixel(next);
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.hypot(dx, dy);
+
         if (dist < this.speed) {
-            this.x = target.x;
-            this.y = target.y;
             this.pathIndex++;
         } else {
-            this.x += this.speed * dx / dist;
-            this.y += this.speed * dy / dist;
+            this.x += dx / dist * this.speed;
+            this.y += dy / dist * this.speed;
         }
     }
     draw() {
-        // kropp
-        ctx.fillStyle = "#b22222";
+        ctx.fillStyle = "#ff4444";
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
         ctx.fill();
+
         // HP-bar
-        const barWidth = 26;
-        const hpRatio = this.hp / this.maxHp;
+        const w = 26;
+        const ratio = this.hp / this.maxHp;
         ctx.fillStyle = "#000";
-        ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 8, barWidth, 4);
+        ctx.fillRect(this.x - w/2, this.y - this.radius - 8, w, 4);
         ctx.fillStyle = "#0f0";
-        ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 8, barWidth * hpRatio, 4);
+        ctx.fillRect(this.x - w/2, this.y - this.radius - 8, w * ratio, 4);
     }
 }
 
 class Tower {
-    constructor(x, y) {
+    constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.range = 100;
-        this.fireRate = 40; // frames
+        this.type = type;
+
+        if (type === "normal") {
+            this.range = 120;
+            this.fireRate = 35;
+            this.damage = 10;
+        }
+        if (type === "fast") {
+            this.range = 100;
+            this.fireRate = 15;
+            this.damage = 5;
+        }
+        if (type === "heavy") {
+            this.range = 150;
+            this.fireRate = 60;
+            this.damage = 25;
+        }
+
         this.cooldown = 0;
     }
     update() {
@@ -147,9 +178,9 @@ class Tower {
             this.cooldown--;
             return;
         }
-        // finn nærmeste fiende i rekkevidde
         let target = null;
         let closest = Infinity;
+
         for (const e of enemies) {
             const d = Math.hypot(e.x - this.x, e.y - this.y);
             if (d < this.range && d < closest) {
@@ -157,31 +188,30 @@ class Tower {
                 target = e;
             }
         }
+
         if (target) {
-            bullets.push(new Bullet(this.x, this.y, target));
+            bullets.push(new Bullet(this.x, this.y, target, this.damage));
             this.cooldown = this.fireRate;
         }
     }
     draw() {
-        ctx.fillStyle = "#333";
+        ctx.fillStyle = this.type === "normal" ? "#4a90e2" :
+                        this.type === "fast" ? "#50e3c2" : "#e94e77";
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, 14, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = "#999";
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 8, 0, Math.PI*2);
         ctx.fill();
     }
 }
 
 class Bullet {
-    constructor(x, y, target) {
+    constructor(x, y, target, damage) {
         this.x = x;
         this.y = y;
         this.target = target;
-        this.speed = 5;
-        this.radius = 4;
-        this.damage = 10;
+        this.damage = damage;
+        this.speed = 6;
+        this.dead = false;
     }
     update() {
         if (!this.target || this.target.hp <= 0) {
@@ -191,42 +221,45 @@ class Bullet {
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
         const dist = Math.hypot(dx, dy);
+
         if (dist < this.speed) {
             this.target.hp -= this.damage;
-            if (this.target.hp <= 0) {
-                money += 5;
-            }
+            if (this.target.hp <= 0) money += 5;
             this.dead = true;
         } else {
-            this.x += this.speed * dx / dist;
-            this.y += this.speed * dy / dist;
+            this.x += dx / dist * this.speed;
+            this.y += dy / dist * this.speed;
         }
     }
     draw() {
-        ctx.fillStyle = "#ff0";
+        ctx.fillStyle = "#ffff66";
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
         ctx.fill();
     }
 }
 
-function isOnPath(gridX, gridY) {
-    return path.some(p => p.x === gridX && p.y === gridY);
+function isOnPath(x, y) {
+    return path.some(p => p.x === x && p.y === y);
 }
 
 canvas.addEventListener("click", (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const gridX = Math.floor(x / TILE);
-    const gridY = Math.floor(y / TILE);
 
-    if (isOnPath(gridX, gridY)) return;
-    const cost = 50;
+    const gx = Math.floor(x / TILE);
+    const gy = Math.floor(y / TILE);
+
+    if (isOnPath(gx, gy)) return;
+
+    const cost = selectedTower === "normal" ? 50 :
+                 selectedTower === "fast" ? 70 : 100;
+
     if (money < cost) return;
 
-    const pos = gridToPixel({x:gridX,y:gridY});
-    towers.push(new Tower(pos.x, pos.y));
+    const pos = gridToPixel({x: gx, y: gy});
+    towers.push(new Tower(pos.x, pos.y, selectedTower));
     money -= cost;
 });
 
@@ -236,33 +269,32 @@ function spawnEnemy() {
 
 function nextWave() {
     wave++;
-    enemiesToSpawn = 10 + wave * 2;
+    enemiesToSpawn = 10 + wave * 3;
     spawnTimer = 0;
 }
 
 function updateGame() {
-    // spawn logikk
     if (enemiesToSpawn > 0) {
         spawnTimer--;
         if (spawnTimer <= 0) {
             spawnEnemy();
             enemiesToSpawn--;
-            spawnTimer = 60; // tid mellom fiender
+            spawnTimer = 50;
         }
     } else if (enemies.length === 0) {
         nextWave();
     }
 
-    for (const e of enemies) e.update();
-    for (const t of towers) t.update();
-    for (const b of bullets) b.update();
+    enemies.forEach(e => e.update());
+    towers.forEach(t => t.update());
+    bullets.forEach(b => b.update());
 
     enemies = enemies.filter(e => e.hp > 0);
     bullets = bullets.filter(b => !b.dead);
 
     if (lives <= 0) {
         alert("Game Over! Du nådde bølge " + wave);
-        resetGame();
+        location.reload();
     }
 
     livesEl.textContent = lives;
@@ -273,11 +305,8 @@ function updateGame() {
 function drawGrid() {
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
-            const isPath = isOnPath(x,y);
-            ctx.fillStyle = isPath ? "#c2b280" : "#3b6b2a";
+            ctx.fillStyle = isOnPath(x, y) ? "#c2b280" : "#3b6b2a";
             ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-            ctx.strokeStyle = "rgba(0,0,0,0.2)";
-            ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
         }
     }
 }
@@ -285,9 +314,9 @@ function drawGrid() {
 function drawGame() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawGrid();
-    for (const t of towers) t.draw();
-    for (const e of enemies) e.draw();
-    for (const b of bullets) b.draw();
+    towers.forEach(t => t.draw());
+    enemies.forEach(e => e.draw());
+    bullets.forEach(b => b.draw());
 }
 
 function loop() {
@@ -296,18 +325,6 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-function resetGame() {
-    lives = 20;
-    money = 100;
-    wave = 1;
-    enemies = [];
-    towers = [];
-    bullets = [];
-    enemiesToSpawn = 10;
-    spawnTimer = 0;
-}
-
-resetGame();
 loop();
 </script>
 </body>
