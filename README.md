@@ -2,216 +2,262 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Cookie Clicker</title>
+<title>Forsterket Cookie Clicker</title>
 <style>
     body {
         font-family: Arial, sans-serif;
-        background: #222;
-        color: #f5f5f5;
+        background: #f3e5ab;
         text-align: center;
         margin: 0;
-        padding: 0;
+        padding: 20px;
     }
-    h1 {
-        margin-top: 20px;
-    }
+
+    h1 { margin-bottom: 5px; }
+
     #cookie {
-        width: 200px;
-        height: 200px;
+        width: 220px;
+        height: 220px;
         border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, #f7d7a8, #c58b4e);
+        background: radial-gradient(circle at 30% 30%, #f7d9a5, #c58b3b);
+        box-shadow: 0 0 25px rgba(0,0,0,0.3);
         margin: 20px auto;
-        box-shadow: 0 0 20px rgba(0,0,0,0.6);
         position: relative;
         cursor: pointer;
-        transition: transform 0.05s;
+        transition: transform 0.1s ease;
     }
+
     #cookie:active {
-        transform: scale(0.95);
+        transform: scale(0.92);
     }
+
     .chip {
-        width: 20px;
-        height: 20px;
-        background: #3b2a1a;
+        width: 22px;
+        height: 22px;
+        background: #4b2e19;
         border-radius: 50%;
         position: absolute;
     }
-    .chip:nth-child(1) { top: 40px; left: 60px; }
-    .chip:nth-child(2) { top: 80px; left: 120px; }
-    .chip:nth-child(3) { top: 130px; left: 80px; }
-    .chip:nth-child(4) { top: 60px; left: 130px; }
-    .chip:nth-child(5) { top: 120px; left: 40px; }
 
-    .stats {
-        margin: 10px 0;
-    }
-
-    .container {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        padding: 20px;
-        flex-wrap: wrap;
-    }
-
-    .box {
-        background: #333;
-        border: 1px solid #555;
-        padding: 15px;
-        width: 280px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    }
-
-    button {
-        padding: 8px;
-        margin: 4px 0;
-        width: 100%;
-        cursor: pointer;
-        border: none;
-        background: #ffb347;
-        color: #222;
+    /* Flyvende +1 */
+    .floatText {
+        position: absolute;
+        color: #5a3b1a;
         font-weight: bold;
+        animation: floatUp 1s ease-out forwards;
+        pointer-events: none;
+    }
+
+    @keyframes floatUp {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-40px); }
+    }
+
+    #shop {
+        background: #fff7d6;
+        padding: 15px;
+        border-radius: 10px;
+        width: 330px;
+        margin: 20px auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+
+    .upgrade {
+        display: flex;
+        justify-content: space-between;
+        background: #ffeeb5;
+        padding: 10px;
+        border-radius: 6px;
+        margin: 8px 0;
+    }
+
+    .upgrade button {
+        background: #d48b39;
+        border: none;
+        padding: 6px 12px;
+        color: white;
         border-radius: 4px;
-        transition: background 0.2s;
+        cursor: pointer;
     }
-    button:hover {
-        background: #ff9800;
-    }
-    button:disabled {
-        background: #777;
+
+    .upgrade button:disabled {
+        background: #b3b3b3;
         cursor: not-allowed;
     }
 
-    ul {
-        list-style: none;
-        padding: 0;
-        text-align: left;
-        font-size: 14px;
-    }
 </style>
 </head>
 <body>
 
-<h1>🍪 Cookie Clicker</h1>
+<h1>Cookie Clicker+</h1>
+
+<div id="stats">
+    <p>Cookies: <strong id="cookieCount">0</strong></p>
+    <p>Per klikk: <strong id="perClick">1</strong></p>
+    <p>Per sekund: <strong id="perSecond">0</strong></p>
+</div>
 
 <div id="cookie">
-    <div class="chip"></div>
-    <div class="chip"></div>
-    <div class="chip"></div>
-    <div class="chip"></div>
-    <div class="chip"></div>
+    <div class="chip" style="top:40px; left:60px;"></div>
+    <div class="chip" style="top:80px; right:50px;"></div>
+    <div class="chip" style="bottom:50px; left:80px;"></div>
+    <div class="chip" style="top:110px; right:90px;"></div>
+    <div class="chip" style="bottom:70px; right:70px;"></div>
 </div>
 
-<div class="stats">
-    <h2>Cookies: <span id="cookies">0</span></h2>
-    <p>Per klikk: <span id="perClick">1</span></p>
-    <p>Per sekund: <span id="perSecond">0</span></p>
-</div>
+<div id="shop">
+    <h2>Butikk</h2>
 
-<div class="container">
-    <div class="box">
-        <h2>🛒 Butikk</h2>
-        <div id="shop"></div>
+    <div class="upgrade">
+        <div><strong>Bedre klikk</strong><br>+1 per klikk<br>Kostnad: <span id="clickCost">20</span></div>
+        <button id="buyClick">Kjøp</button>
     </div>
 
-    <div class="box">
-        <h2>🏆 Achievements</h2>
-        <ul id="achievements"></ul>
+    <div class="upgrade">
+        <div><strong>Bestemor</strong><br>+1 per sekund<br>Kostnad: <span id="grandmaCost">50</span></div>
+        <button id="buyGrandma">Kjøp</button>
     </div>
+
+    <div class="upgrade">
+        <div><strong>Fabrikk</strong><br>+5 per sekund<br>Kostnad: <span id="factoryCost">200</span></div>
+        <button id="buyFactory">Kjøp</button>
+    </div>
+
+    <div class="upgrade">
+        <div><strong>Superklikk</strong><br>10% sjanse for ×10 kritisk klikk<br>Kostnad: <span id="critCost">500</span></div>
+        <button id="buyCrit">Kjøp</button>
+    </div>
+
 </div>
 
 <script>
-let cookies = 0;
-let perClick = 1;
-let perSecond = 0;
+    let cookies = 0;
+    let perClick = 1;
+    let perSecond = 0;
 
-const upgrades = [
-    { name: "Bedre klikk", type: "click", level: 0, baseCost: 10, cost: 10, bonus: 1 },
-    { name: "Super klikk", type: "click", level: 0, baseCost: 100, cost: 100, bonus: 5 },
-    { name: "Bestemor", type: "passive", level: 0, baseCost: 50, cost: 50, bonus: 1 },
-    { name: "Fabrikk", type: "passive", level: 0, baseCost: 500, cost: 500, bonus: 5 }
-];
+    let clickCost = 20;
+    let grandmaCost = 50;
+    let factoryCost = 200;
+    let critCost = 500;
 
-const achievements = [
-    { name: "Første cookie", requirement: 1, unlocked: false },
-    { name: "100 cookies", requirement: 100, unlocked: false },
-    { name: "1 000 cookies", requirement: 1000, unlocked: false },
-    { name: "10 000 cookies", requirement: 10000, unlocked: false }
-];
+    let critUnlocked = false;
 
-const cookieEl = document.getElementById("cookie");
-const cookiesEl = document.getElementById("cookies");
-const perClickEl = document.getElementById("perClick");
-const perSecondEl = document.getElementById("perSecond");
-const shopEl = document.getElementById("shop");
-const achievementsEl = document.getElementById("achievements");
+    const cookieEl = document.getElementById("cookie");
+    const cookieCountEl = document.getElementById("cookieCount");
+    const perClickEl = document.getElementById("perClick");
+    const perSecondEl = document.getElementById("perSecond");
 
-cookieEl.addEventListener("click", () => {
-    cookies += perClick;
-    update();
-});
+    function update() {
+        cookieCountEl.textContent = Math.floor(cookies);
+        perClickEl.textContent = perClick;
+        perSecondEl.textContent = perSecond;
 
-function buyUpgrade(index) {
-    const u = upgrades[index];
-    if (cookies < u.cost) return;
+        document.getElementById("clickCost").textContent = clickCost;
+        document.getElementById("grandmaCost").textContent = grandmaCost;
+        document.getElementById("factoryCost").textContent = factoryCost;
+        document.getElementById("critCost").textContent = critCost;
 
-    cookies -= u.cost;
-    u.level++;
-    u.cost = Math.floor(u.baseCost * Math.pow(1.5, u.level));
-
-    if (u.type === "click") {
-        perClick += u.bonus;
-    } else if (u.type === "passive") {
-        perSecond += u.bonus;
+        document.getElementById("buyClick").disabled = cookies < clickCost;
+        document.getElementById("buyGrandma").disabled = cookies < grandmaCost;
+        document.getElementById("buyFactory").disabled = cookies < factoryCost;
+        document.getElementById("buyCrit").disabled = cookies < critCost;
     }
 
-    update();
-}
+    function floatText(x, y, text) {
+        const el = document.createElement("div");
+        el.className = "floatText";
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.textContent = text;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
 
-function renderShop() {
-    shopEl.innerHTML = "";
-    upgrades.forEach((u, i) => {
-        const btn = document.createElement("button");
-        btn.textContent = `${u.name} (Lvl ${u.level}) – Kostnad: ${u.cost}`;
-        btn.disabled = cookies < u.cost;
-        btn.onclick = () => buyUpgrade(i);
-        shopEl.appendChild(btn);
-    });
-}
+    cookieEl.addEventListener("click", (e) => {
+        let gain = perClick;
 
-function checkAchievements() {
-    achievements.forEach(a => {
-        if (!a.unlocked && cookies >= a.requirement) {
-            a.unlocked = true;
+        if (critUnlocked && Math.random() < 0.10) {
+            gain *= 10;
+            floatText(e.pageX, e.pageY, "KRITISK! +" + gain);
+        } else {
+            floatText(e.pageX, e.pageY, "+" + gain);
         }
+
+        cookies += gain;
+        update();
+        save();
     });
-}
 
-function renderAchievements() {
-    achievementsEl.innerHTML = "";
-    achievements.forEach(a => {
-        const li = document.createElement("li");
-        li.textContent = `${a.unlocked ? "✅" : "❌"} ${a.name}`;
-        achievementsEl.appendChild(li);
-    });
-}
+    document.getElementById("buyClick").onclick = () => {
+        if (cookies >= clickCost) {
+            cookies -= clickCost;
+            perClick++;
+            clickCost = Math.floor(clickCost * 1.5);
+            update();
+            save();
+        }
+    };
 
-function update() {
-    cookiesEl.textContent = Math.floor(cookies);
-    perClickEl.textContent = perClick;
-    perSecondEl.textContent = perSecond;
+    document.getElementById("buyGrandma").onclick = () => {
+        if (cookies >= grandmaCost) {
+            cookies -= grandmaCost;
+            perSecond++;
+            grandmaCost = Math.floor(grandmaCost * 1.6);
+            update();
+            save();
+        }
+    };
 
-    checkAchievements();
-    renderShop();
-    renderAchievements();
-}
+    document.getElementById("buyFactory").onclick = () => {
+        if (cookies >= factoryCost) {
+            cookies -= factoryCost;
+            perSecond += 5;
+            factoryCost = Math.floor(factoryCost * 1.7);
+            update();
+            save();
+        }
+    };
 
-setInterval(() => {
-    cookies += perSecond;
+    document.getElementById("buyCrit").onclick = () => {
+        if (cookies >= critCost) {
+            cookies -= critCost;
+            critUnlocked = true;
+            critCost = "KJØPT";
+            document.getElementById("buyCrit").disabled = true;
+            update();
+            save();
+        }
+    };
+
+    setInterval(() => {
+        cookies += perSecond / 10;
+        update();
+        save();
+    }, 100);
+
+    function save() {
+        localStorage.setItem("cookieSave", JSON.stringify({
+            cookies, perClick, perSecond,
+            clickCost, grandmaCost, factoryCost, critCost,
+            critUnlocked
+        }));
+    }
+
+    function load() {
+        const data = JSON.parse(localStorage.getItem("cookieSave"));
+        if (!data) return;
+
+        cookies = data.cookies;
+        perClick = data.perClick;
+        perSecond = data.perSecond;
+        clickCost = data.clickCost;
+        grandmaCost = data.grandmaCost;
+        factoryCost = data.factoryCost;
+        critCost = data.critCost;
+        critUnlocked = data.critUnlocked;
+    }
+
+    load();
     update();
-}, 1000);
-
-update();
 </script>
 
 </body>
