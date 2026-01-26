@@ -1,19 +1,137 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<title>Forbedret Tower Defence</title>
+<style>
+    body {
+        background: #1e1e1e;
+        color: #eee;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 10px;
+    }
+    #gameContainer {
+        margin: 10px auto;
+        position: relative;
+        width: 640px;
+    }
+    canvas {
+        background: #3b6b2a;
+        border: 3px solid #555;
+        display: block;
+        margin: 0 auto;
+        cursor: crosshair;
+    }
+    #ui {
+        margin-top: 10px;
+    }
+    #ui span {
+        margin: 0 10px;
+    }
+    #towerMenu {
+        margin-top: 10px;
+    }
+    .towerBtn {
+        padding: 8px 12px;
+        margin: 5px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: white;
+    }
+    .normal { background: #4a90e2; }
+    .fast { background: #50e3c2; }
+    .heavy { background: #e94e77; }
+</style>
+</head>
+<body>
+
+<h1>Forbedret Tower Defence</h1>
+
+<div id="gameContainer">
+    <canvas id="game" width="640" height="480"></canvas>
+</div>
+
+<div id="ui">
+    <span>Liv: <strong id="lives">20</strong></span>
+    <span>Penger: <strong id="money">150</strong></span>
+    <span>Bølge: <strong id="wave">1</strong></span>
+</div>
+
+<div id="towerMenu">
+    <button class="towerBtn normal" onclick="selectTower('normal')">Normal (50)</button>
+    <button class="towerBtn fast" onclick="selectTower('fast')">Rask (70)</button>
+    <button class="towerBtn heavy" onclick="selectTower('heavy')">Tung (100)</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const TILE = 40;
+const ROWS = canvas.height / TILE;
+const COLS = canvas.width / TILE;
+
+let selectedTower = "normal";
+
+function selectTower(type) {
+    selectedTower = type;
+}
+
+// Sti
+const path = [];
+for (let x = 0; x < 16; x++) path.push({x, y: 5});
+
+let towers = [];
+let enemies = [];
+let bullets = [];
+
+let lives = 20;
+let money = 150;
+let wave = 1;
+let spawnTimer = 0;
+let enemiesToSpawn = 10;
+
+const livesEl = document.getElementById("lives");
+const moneyEl = document.getElementById("money");
+const waveEl = document.getElementById("wave");
+
+function gridToPixel(g) {
+    return { x: g.x * TILE + TILE/2, y: g.y * TILE + TILE/2 };
+}
+
 // ----------------------------
-//     BOSS MONSTER
+//     NYE MONSTERTYPER
 // ----------------------------
-class Boss {
-    constructor() {
-        this.type = "boss";
+class Enemy {
+    constructor(type) {
+        this.type = type;
         this.pathIndex = 0;
+
         const start = gridToPixel(path[0]);
         this.x = start.x;
         this.y = start.y;
 
-        this.speed = 0.5;  // BOSS er langsommere
-        this.hp = 500 + wave * 20;  // BOSS har mye mer helse
+        if (type === "normal") {
+            this.speed = 1.2 + wave * 0.05;
+            this.hp = 25 + wave * 6;
+            this.color = "#ff4444";
+        }
+        if (type === "fast") {
+            this.speed = 2.5 + wave * 0.08;
+            this.hp = 12 + wave * 3;
+            this.color = "#ffee55";
+        }
+        if (type === "strong") {
+            this.speed = 0.7 + wave * 0.03;
+            this.hp = 80 + wave * 15;
+            this.color = "#b455ff";
+        }
+
+        this.radius = 12;
         this.maxHp = this.hp;
-        this.color = "#ff0000";  // Rød farge for BOSS
-        this.radius = 20;  // Større enn vanlige fiender
     }
 
     update() {
@@ -43,7 +161,7 @@ class Boss {
         ctx.fill();
 
         // HP-bar
-        const w = 40;
+        const w = 26;
         const ratio = this.hp / this.maxHp;
         ctx.fillStyle = "#000";
         ctx.fillRect(this.x - w/2, this.y - this.radius - 8, w, 4);
@@ -53,27 +171,211 @@ class Boss {
 }
 
 // ----------------------------
-//     SPAWNER OPPLADING
+//     TÅRN
+// ----------------------------
+class Tower {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+
+        if (type === "normal") {
+            this.range = 120;
+            this.fireRate = 35;
+            this.damage = 10;
+        }
+        if (type === "fast") {
+            this.range = 100;
+            this.fireRate = 15;
+            this.damage = 5;
+        }
+        if (type === "heavy") {
+            this.range = 150;
+            this.fireRate = 60;
+            this.damage = 25;
+        }
+
+        this.cooldown = 0;
+    }
+
+    update() {
+        if (this.cooldown > 0) {
+            this.cooldown--;
+            return;
+        }
+
+        let target = null;
+        let closest = Infinity;
+
+        for (const e of enemies) {
+            const d = Math.hypot(e.x - this.x, e.y - this.y);
+            if (d < this.range && d < closest) {
+                closest = d;
+                target = e;
+            }
+        }
+
+        if (target) {
+            bullets.push(new Bullet(this.x, this.y, target, this.damage));
+            this.cooldown = this.fireRate;
+        }
+    }
+
+    draw() {
+        ctx.fillStyle =
+            this.type === "normal" ? "#4a90e2" :
+            this.type === "fast" ? "#50e3c2" :
+            "#e94e77";
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 14, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+// ----------------------------
+//     KULER
+// ----------------------------
+class Bullet {
+    constructor(x, y, target, damage) {
+        this.x = x;
+        this.y = y;
+        this.target = target;
+        this.damage = damage;
+        this.speed = 6;
+        this.dead = false;
+    }
+
+    update() {
+        if (!this.target || this.target.hp <= 0) {
+            this.dead = true;
+            return;
+        }
+
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < this.speed) {
+            this.target.hp -= this.damage;
+            if (this.target.hp <= 0) money += 5;
+            this.dead = true;
+        } else {
+            this.x += dx / dist * this.speed;
+            this.y += dy / dist * this.speed;
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = "#ffff66";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+// ----------------------------
+//     SPILLLOGIKK
+// ----------------------------
+function isOnPath(x, y) {
+    return path.some(p => p.x === x && p.y === y);
+}
+
+canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const gx = Math.floor(x / TILE);
+    const gy = Math.floor(y / TILE);
+
+    if (isOnPath(gx, gy)) return;
+
+    const cost =
+        selectedTower === "normal" ? 50 :
+        selectedTower === "fast" ? 70 :
+        100;
+
+    if (money < cost) return;
+
+    const pos = gridToPixel({x: gx, y: gy});
+    towers.push(new Tower(pos.x, pos.y, selectedTower));
+    money -= cost;
+});
+
+// ----------------------------
+//     NY SPAWNER
 // ----------------------------
 function spawnEnemy() {
     let type = "normal";
-    
-    // Spawne Boss fra bølge 5
-    if (wave >= 5 && Math.random() < 0.05) {  // 5% sjanse på Bossen
-        enemies.push(new Boss());
-        return;
-    }
 
     const r = Math.random();
-    if (r < 0.15 + wave * 0.01) type = "fast";     // flere raske fiender senere
-    if (r > 0.85 - wave * 0.01) type = "strong";   // flere sterke fiender senere
+
+    if (r < 0.15 + wave * 0.01) type = "fast";     // flere raske senere
+    if (r > 0.85 - wave * 0.01) type = "strong";   // flere sterke senere
 
     enemies.push(new Enemy(type));
 }
 
-// Oppdater `nextWave` funksjonen om nødvendig
 function nextWave() {
     wave++;
     enemiesToSpawn = 10 + wave * 3;
     spawnTimer = 0;
 }
+
+function updateGame() {
+    if (enemiesToSpawn > 0) {
+        spawnTimer--;
+        if (spawnTimer <= 0) {
+            spawnEnemy();
+            enemiesToSpawn--;
+            spawnTimer = 50;
+        }
+    } else if (enemies.length === 0) {
+        nextWave();
+    }
+
+    enemies.forEach(e => e.update());
+    towers.forEach(t => t.update());
+    bullets.forEach(b => b.update());
+
+    enemies = enemies.filter(e => e.hp > 0);
+    bullets = bullets.filter(b => !b.dead);
+
+    if (lives <= 0) {
+        alert("Game Over! Du nådde bølge " + wave);
+        location.reload();
+    }
+
+    livesEl.textContent = lives;
+    moneyEl.textContent = money;
+    waveEl.textContent = wave;
+}
+
+function drawGrid() {
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            ctx.fillStyle = isOnPath(x, y) ? "#c2b280" : "#3b6b2a";
+            ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+        }
+    }
+}
+
+function drawGame() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawGrid();
+    towers.forEach(t => t.draw());
+    enemies.forEach(e => e.draw());
+    bullets.forEach(b => b.draw());
+}
+
+function loop() {
+    updateGame();
+    drawGame();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
