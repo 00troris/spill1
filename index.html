@@ -102,18 +102,38 @@ function gridToPixel(g) {
     return { x: g.x * TILE + TILE/2, y: g.y * TILE + TILE/2 };
 }
 
+// ----------------------------
+//     NYE MONSTERTYPER
+// ----------------------------
 class Enemy {
-    constructor() {
+    constructor(type) {
+        this.type = type;
         this.pathIndex = 0;
+
         const start = gridToPixel(path[0]);
         this.x = start.x;
         this.y = start.y;
 
-        this.speed = 1 + Math.random() * 0.5 + wave * 0.05;
+        if (type === "normal") {
+            this.speed = 1.2 + wave * 0.05;
+            this.hp = 25 + wave * 6;
+            this.color = "#ff4444";
+        }
+        if (type === "fast") {
+            this.speed = 2.5 + wave * 0.08;
+            this.hp = 12 + wave * 3;
+            this.color = "#ffee55";
+        }
+        if (type === "strong") {
+            this.speed = 0.7 + wave * 0.03;
+            this.hp = 80 + wave * 15;
+            this.color = "#b455ff";
+        }
+
         this.radius = 12;
-        this.hp = 20 + wave * 6 + Math.random() * 10;
         this.maxHp = this.hp;
     }
+
     update() {
         const next = path[this.pathIndex + 1];
         if (!next) {
@@ -133,8 +153,9 @@ class Enemy {
             this.y += dy / dist * this.speed;
         }
     }
+
     draw() {
-        ctx.fillStyle = "#ff4444";
+        ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
         ctx.fill();
@@ -149,6 +170,9 @@ class Enemy {
     }
 }
 
+// ----------------------------
+//     TÅRN
+// ----------------------------
 class Tower {
     constructor(x, y, type) {
         this.x = x;
@@ -173,11 +197,13 @@ class Tower {
 
         this.cooldown = 0;
     }
+
     update() {
         if (this.cooldown > 0) {
             this.cooldown--;
             return;
         }
+
         let target = null;
         let closest = Infinity;
 
@@ -194,9 +220,12 @@ class Tower {
             this.cooldown = this.fireRate;
         }
     }
+
     draw() {
-        ctx.fillStyle = this.type === "normal" ? "#4a90e2" :
-                        this.type === "fast" ? "#50e3c2" : "#e94e77";
+        ctx.fillStyle =
+            this.type === "normal" ? "#4a90e2" :
+            this.type === "fast" ? "#50e3c2" :
+            "#e94e77";
 
         ctx.beginPath();
         ctx.arc(this.x, this.y, 14, 0, Math.PI*2);
@@ -204,6 +233,9 @@ class Tower {
     }
 }
 
+// ----------------------------
+//     KULER
+// ----------------------------
 class Bullet {
     constructor(x, y, target, damage) {
         this.x = x;
@@ -213,11 +245,13 @@ class Bullet {
         this.speed = 6;
         this.dead = false;
     }
+
     update() {
         if (!this.target || this.target.hp <= 0) {
             this.dead = true;
             return;
         }
+
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
         const dist = Math.hypot(dx, dy);
@@ -231,6 +265,7 @@ class Bullet {
             this.y += dy / dist * this.speed;
         }
     }
+
     draw() {
         ctx.fillStyle = "#ffff66";
         ctx.beginPath();
@@ -239,6 +274,9 @@ class Bullet {
     }
 }
 
+// ----------------------------
+//     SPILLLOGIKK
+// ----------------------------
 function isOnPath(x, y) {
     return path.some(p => p.x === x && p.y === y);
 }
@@ -253,8 +291,10 @@ canvas.addEventListener("click", (e) => {
 
     if (isOnPath(gx, gy)) return;
 
-    const cost = selectedTower === "normal" ? 50 :
-                 selectedTower === "fast" ? 70 : 100;
+    const cost =
+        selectedTower === "normal" ? 50 :
+        selectedTower === "fast" ? 70 :
+        100;
 
     if (money < cost) return;
 
@@ -263,8 +303,18 @@ canvas.addEventListener("click", (e) => {
     money -= cost;
 });
 
+// ----------------------------
+//     NY SPAWNER
+// ----------------------------
 function spawnEnemy() {
-    enemies.push(new Enemy());
+    let type = "normal";
+
+    const r = Math.random();
+
+    if (r < 0.15 + wave * 0.01) type = "fast";     // flere raske senere
+    if (r > 0.85 - wave * 0.01) type = "strong";   // flere sterke senere
+
+    enemies.push(new Enemy(type));
 }
 
 function nextWave() {
