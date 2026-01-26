@@ -2,263 +2,313 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Forsterket Cookie Clicker</title>
+<title>Enkelt Tower Defence</title>
 <style>
     body {
+        background: #222;
+        color: #eee;
         font-family: Arial, sans-serif;
-        background: #f3e5ab;
         text-align: center;
         margin: 0;
-        padding: 20px;
-    }
-
-    h1 { margin-bottom: 5px; }
-
-    #cookie {
-        width: 220px;
-        height: 220px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, #f7d9a5, #c58b3b);
-        box-shadow: 0 0 25px rgba(0,0,0,0.3);
-        margin: 20px auto;
-        position: relative;
-        cursor: pointer;
-        transition: transform 0.1s ease;
-    }
-
-    #cookie:active {
-        transform: scale(0.92);
-    }
-
-    .chip {
-        width: 22px;
-        height: 22px;
-        background: #4b2e19;
-        border-radius: 50%;
-        position: absolute;
-    }
-
-    /* Flyvende +1 */
-    .floatText {
-        position: absolute;
-        color: #5a3b1a;
-        font-weight: bold;
-        animation: floatUp 1s ease-out forwards;
-        pointer-events: none;
-    }
-
-    @keyframes floatUp {
-        from { opacity: 1; transform: translateY(0); }
-        to { opacity: 0; transform: translateY(-40px); }
-    }
-
-    #shop {
-        background: #fff7d6;
-        padding: 15px;
-        border-radius: 10px;
-        width: 330px;
-        margin: 20px auto;
-        box-shadow: 0 0 10px rgba(0,0,0,0.15);
-    }
-
-    .upgrade {
-        display: flex;
-        justify-content: space-between;
-        background: #ffeeb5;
         padding: 10px;
-        border-radius: 6px;
-        margin: 8px 0;
     }
-
-    .upgrade button {
-        background: #d48b39;
-        border: none;
-        padding: 6px 12px;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
+    #gameContainer {
+        margin: 10px auto;
+        position: relative;
+        width: 640px;
     }
-
-    .upgrade button:disabled {
-        background: #b3b3b3;
-        cursor: not-allowed;
+    canvas {
+        background: #3b6b2a;
+        border: 3px solid #555;
+        display: block;
+        margin: 0 auto;
     }
-
+    #ui {
+        margin-top: 10px;
+    }
+    #ui span {
+        margin: 0 10px;
+    }
+    #info {
+        font-size: 0.9rem;
+        margin-top: 5px;
+        color: #ccc;
+    }
 </style>
 </head>
 <body>
+<h1>Mini Tower Defence</h1>
 
-<h1>Cookie Clicker+</h1>
-
-<div id="stats">
-    <p>Cookies: <strong id="cookieCount">0</strong></p>
-    <p>Per klikk: <strong id="perClick">1</strong></p>
-    <p>Per sekund: <strong id="perSecond">0</strong></p>
+<div id="gameContainer">
+    <canvas id="game" width="640" height="480"></canvas>
 </div>
 
-<div id="cookie">
-    <div class="chip" style="top:40px; left:60px;"></div>
-    <div class="chip" style="top:80px; right:50px;"></div>
-    <div class="chip" style="bottom:50px; left:80px;"></div>
-    <div class="chip" style="top:110px; right:90px;"></div>
-    <div class="chip" style="bottom:70px; right:70px;"></div>
+<div id="ui">
+    <span>Liv: <strong id="lives">20</strong></span>
+    <span>Penger: <strong id="money">100</strong></span>
+    <span>Bølge: <strong id="wave">1</strong></span>
+    <span>Tårnpris: <strong>50</strong></span>
 </div>
-
-<div id="shop">
-    <h2>Butikk</h2>
-
-    <div class="upgrade">
-        <div><strong>Bedre klikk</strong><br>+1 per klikk<br>Kostnad: <span id="clickCost">20</span></div>
-        <button id="buyClick">Kjøp</button>
-    </div>
-
-    <div class="upgrade">
-        <div><strong>Bestemor</strong><br>+1 per sekund<br>Kostnad: <span id="grandmaCost">50</span></div>
-        <button id="buyGrandma">Kjøp</button>
-    </div>
-
-    <div class="upgrade">
-        <div><strong>Fabrikk</strong><br>+5 per sekund<br>Kostnad: <span id="factoryCost">200</span></div>
-        <button id="buyFactory">Kjøp</button>
-    </div>
-
-    <div class="upgrade">
-        <div><strong>Superklikk</strong><br>10% sjanse for ×10 kritisk klikk<br>Kostnad: <span id="critCost">500</span></div>
-        <button id="buyCrit">Kjøp</button>
-    </div>
-
+<div id="info">
+    Klikk på gresset for å plassere tårn. Ikke på stien. Fiender følger den lyse stien.
 </div>
 
 <script>
-    let cookies = 0;
-    let perClick = 1;
-    let perSecond = 0;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    let clickCost = 20;
-    let grandmaCost = 50;
-    let factoryCost = 200;
-    let critCost = 500;
+const TILE = 40;
+const ROWS = canvas.height / TILE;
+const COLS = canvas.width / TILE;
 
-    let critUnlocked = false;
+// Enkel sti (liste med grid-koordinater)
+const path = [
+    {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},
+    {x:5,y:5},{x:6,y:5},{x:7,y:5},{x:8,y:5},{x:9,y:5},
+    {x:10,y:5},{x:11,y:5},{x:12,y:5},{x:13,y:5},{x:14,y:5},
+    {x:15,y:5}
+];
 
-    const cookieEl = document.getElementById("cookie");
-    const cookieCountEl = document.getElementById("cookieCount");
-    const perClickEl = document.getElementById("perClick");
-    const perSecondEl = document.getElementById("perSecond");
+let towers = [];
+let enemies = [];
+let bullets = [];
 
-    function update() {
-        cookieCountEl.textContent = Math.floor(cookies);
-        perClickEl.textContent = perClick;
-        perSecondEl.textContent = perSecond;
+let lives = 20;
+let money = 100;
+let wave = 1;
+let spawnTimer = 0;
+let enemiesToSpawn = 10;
 
-        document.getElementById("clickCost").textContent = clickCost;
-        document.getElementById("grandmaCost").textContent = grandmaCost;
-        document.getElementById("factoryCost").textContent = factoryCost;
-        document.getElementById("critCost").textContent = critCost;
+const livesEl = document.getElementById("lives");
+const moneyEl = document.getElementById("money");
+const waveEl = document.getElementById("wave");
 
-        document.getElementById("buyClick").disabled = cookies < clickCost;
-        document.getElementById("buyGrandma").disabled = cookies < grandmaCost;
-        document.getElementById("buyFactory").disabled = cookies < factoryCost;
-        document.getElementById("buyCrit").disabled = cookies < critCost;
+function gridToPixel(g) {
+    return { x: g.x * TILE + TILE/2, y: g.y * TILE + TILE/2 };
+}
+
+class Enemy {
+    constructor() {
+        this.pathIndex = 0;
+        const start = gridToPixel(path[0]);
+        this.x = start.x;
+        this.y = start.y;
+        this.speed = 1 + wave * 0.1;
+        this.radius = 12;
+        this.hp = 20 + wave * 5;
+        this.maxHp = this.hp;
     }
-
-    function floatText(x, y, text) {
-        const el = document.createElement("div");
-        el.className = "floatText";
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        el.textContent = text;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1000);
-    }
-
-    cookieEl.addEventListener("click", (e) => {
-        let gain = perClick;
-
-        if (critUnlocked && Math.random() < 0.10) {
-            gain *= 10;
-            floatText(e.pageX, e.pageY, "KRITISK! +" + gain);
+    update() {
+        const targetGrid = path[this.pathIndex + 1];
+        if (!targetGrid) {
+            lives--;
+            this.hp = 0;
+            return;
+        }
+        const target = gridToPixel(targetGrid);
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < this.speed) {
+            this.x = target.x;
+            this.y = target.y;
+            this.pathIndex++;
         } else {
-            floatText(e.pageX, e.pageY, "+" + gain);
+            this.x += this.speed * dx / dist;
+            this.y += this.speed * dy / dist;
         }
+    }
+    draw() {
+        // kropp
+        ctx.fillStyle = "#b22222";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fill();
+        // HP-bar
+        const barWidth = 26;
+        const hpRatio = this.hp / this.maxHp;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 8, barWidth, 4);
+        ctx.fillStyle = "#0f0";
+        ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 8, barWidth * hpRatio, 4);
+    }
+}
 
-        cookies += gain;
-        update();
-        save();
-    });
-
-    document.getElementById("buyClick").onclick = () => {
-        if (cookies >= clickCost) {
-            cookies -= clickCost;
-            perClick++;
-            clickCost = Math.floor(clickCost * 1.5);
-            update();
-            save();
+class Tower {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.range = 100;
+        this.fireRate = 40; // frames
+        this.cooldown = 0;
+    }
+    update() {
+        if (this.cooldown > 0) {
+            this.cooldown--;
+            return;
         }
-    };
-
-    document.getElementById("buyGrandma").onclick = () => {
-        if (cookies >= grandmaCost) {
-            cookies -= grandmaCost;
-            perSecond++;
-            grandmaCost = Math.floor(grandmaCost * 1.6);
-            update();
-            save();
+        // finn nærmeste fiende i rekkevidde
+        let target = null;
+        let closest = Infinity;
+        for (const e of enemies) {
+            const d = Math.hypot(e.x - this.x, e.y - this.y);
+            if (d < this.range && d < closest) {
+                closest = d;
+                target = e;
+            }
         }
-    };
-
-    document.getElementById("buyFactory").onclick = () => {
-        if (cookies >= factoryCost) {
-            cookies -= factoryCost;
-            perSecond += 5;
-            factoryCost = Math.floor(factoryCost * 1.7);
-            update();
-            save();
+        if (target) {
+            bullets.push(new Bullet(this.x, this.y, target));
+            this.cooldown = this.fireRate;
         }
-    };
+    }
+    draw() {
+        ctx.fillStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 14, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#999";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 8, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
 
-    document.getElementById("buyCrit").onclick = () => {
-        if (cookies >= critCost) {
-            cookies -= critCost;
-            critUnlocked = true;
-            critCost = "KJØPT";
-            document.getElementById("buyCrit").disabled = true;
-            update();
-            save();
+class Bullet {
+    constructor(x, y, target) {
+        this.x = x;
+        this.y = y;
+        this.target = target;
+        this.speed = 5;
+        this.radius = 4;
+        this.damage = 10;
+    }
+    update() {
+        if (!this.target || this.target.hp <= 0) {
+            this.dead = true;
+            return;
         }
-    };
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < this.speed) {
+            this.target.hp -= this.damage;
+            if (this.target.hp <= 0) {
+                money += 5;
+            }
+            this.dead = true;
+        } else {
+            this.x += this.speed * dx / dist;
+            this.y += this.speed * dy / dist;
+        }
+    }
+    draw() {
+        ctx.fillStyle = "#ff0";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
 
-    setInterval(() => {
-        cookies += perSecond / 10;
-        update();
-        save();
-    }, 100);
+function isOnPath(gridX, gridY) {
+    return path.some(p => p.x === gridX && p.y === gridY);
+}
 
-    function save() {
-        localStorage.setItem("cookieSave", JSON.stringify({
-            cookies, perClick, perSecond,
-            clickCost, grandmaCost, factoryCost, critCost,
-            critUnlocked
-        }));
+canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const gridX = Math.floor(x / TILE);
+    const gridY = Math.floor(y / TILE);
+
+    if (isOnPath(gridX, gridY)) return;
+    const cost = 50;
+    if (money < cost) return;
+
+    const pos = gridToPixel({x:gridX,y:gridY});
+    towers.push(new Tower(pos.x, pos.y));
+    money -= cost;
+});
+
+function spawnEnemy() {
+    enemies.push(new Enemy());
+}
+
+function nextWave() {
+    wave++;
+    enemiesToSpawn = 10 + wave * 2;
+    spawnTimer = 0;
+}
+
+function updateGame() {
+    // spawn logikk
+    if (enemiesToSpawn > 0) {
+        spawnTimer--;
+        if (spawnTimer <= 0) {
+            spawnEnemy();
+            enemiesToSpawn--;
+            spawnTimer = 60; // tid mellom fiender
+        }
+    } else if (enemies.length === 0) {
+        nextWave();
     }
 
-    function load() {
-        const data = JSON.parse(localStorage.getItem("cookieSave"));
-        if (!data) return;
+    for (const e of enemies) e.update();
+    for (const t of towers) t.update();
+    for (const b of bullets) b.update();
 
-        cookies = data.cookies;
-        perClick = data.perClick;
-        perSecond = data.perSecond;
-        clickCost = data.clickCost;
-        grandmaCost = data.grandmaCost;
-        factoryCost = data.factoryCost;
-        critCost = data.critCost;
-        critUnlocked = data.critUnlocked;
+    enemies = enemies.filter(e => e.hp > 0);
+    bullets = bullets.filter(b => !b.dead);
+
+    if (lives <= 0) {
+        alert("Game Over! Du nådde bølge " + wave);
+        resetGame();
     }
 
-    load();
-    update();
+    livesEl.textContent = lives;
+    moneyEl.textContent = money;
+    waveEl.textContent = wave;
+}
+
+function drawGrid() {
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const isPath = isOnPath(x,y);
+            ctx.fillStyle = isPath ? "#c2b280" : "#3b6b2a";
+            ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
+        }
+    }
+}
+
+function drawGame() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawGrid();
+    for (const t of towers) t.draw();
+    for (const e of enemies) e.draw();
+    for (const b of bullets) b.draw();
+}
+
+function loop() {
+    updateGame();
+    drawGame();
+    requestAnimationFrame(loop);
+}
+
+function resetGame() {
+    lives = 20;
+    money = 100;
+    wave = 1;
+    enemies = [];
+    towers = [];
+    bullets = [];
+    enemiesToSpawn = 10;
+    spawnTimer = 0;
+}
+
+resetGame();
+loop();
 </script>
-
 </body>
 </html>
