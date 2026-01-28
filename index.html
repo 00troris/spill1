@@ -4,120 +4,81 @@
 <meta charset="UTF-8">
 <title>Forbedret Tower Defence</title>
 <style>
-   body {
-       background: #1e1e1e;
-       color: #eee;
-       font-family: Arial, sans-serif;
-       text-align: center;
-       margin: 0;
-       padding: 10px;
-   }
-   #gameContainer {
-       margin: 10px auto;
-       position: relative;
-       width: 640px;
-   }
-   canvas {
-       background: #3b6b2a;
-       border: 3px solid #555;
-       display: block;
-       margin: 0 auto;
-       cursor: crosshair;
-   }
-   #ui {
-       margin-top: 10px;
-   }
-   #ui span {
-       margin: 0 10px;
-   }
-   #towerMenu {
-       margin-top: 10px;
-   }
-   .towerBtn {
-       padding: 8px 12px;
-       margin: 5px;
-       border: 2px solid transparent; /* Forbereder kantlinje */
-       border-radius: 6px;
-       cursor: pointer;
-       color: white;
-       font-weight: bold;
-   }
-   /* Stil for valgt knapp */
-   .towerBtn.active {
-       border: 2px solid #fff;
-       box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-       transform: scale(1.05);
-   }
-   .normal { background: #4a90e2; }
-   .fast { background: #50e3c2; }
-   .heavy { background: #e94e77; }
-   .speedBtn { background: #ffaa00; }
+body {
+    background: #1e1e1e;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 10px;
+}
+#gameContainer {
+    margin: 10px auto;
+    position: relative;
+    width: 640px;
+}
+canvas {
+    background: #3b6b2a;
+    border: 3px solid #555;
+    display: block;
+    margin: 0 auto;
+    cursor: crosshair;
+}
+#ui span { margin: 0 10px; }
+
+.towerBtn {
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+}
+.normal { background:#4a90e2 }
+.fast { background:#50e3c2 }
+.heavy { background:#e94e77 }
+
+/* 🔹 OPPGRADERINGSMENY */
+#upgradeMenu {
+    position: absolute;
+    background: #222;
+    border: 2px solid #555;
+    padding: 10px;
+    display: none;
+    z-index: 10;
+}
+#upgradeMenu button {
+    margin: 4px;
+    width: 100%;
+}
 </style>
 </head>
+
 <body>
 <h1>Forbedret Tower Defence</h1>
+
 <div id="gameContainer">
-<canvas id="game" width="640" height="480"></canvas>
-</div>
-<div id="ui">
-<span>Liv: <strong id="lives">20</strong></span>
-<span>Penger: <strong id="money">150</strong></span>
-<span>Bølge: <strong id="wave">1</strong></span>
+    <canvas id="game" width="640" height="480"></canvas>
+
+    <!-- 🔹 Oppgraderingsmeny -->
+    <div id="upgradeMenu">
+        <div id="towerStats"></div>
+        <button onclick="upgradeDamage()">⬆ Skade (20)</button>
+        <button onclick="upgradeSpeed()">⚡ Hastighet (20)</button>
+        <button onclick="sellTower()">🗑️ Selg tårn</button>
+    </div>
 </div>
 
-<!-- Lagt til id på knappene for enklere markering -->
-<div id="towerMenu">
-<button id="btn-normal" class="towerBtn normal active" onclick="selectTower('normal')">Normal (50)</button>
-<button id="btn-fast" class="towerBtn fast" onclick="selectTower('fast')">Rask (70)</button>
-<button id="btn-heavy" class="towerBtn heavy" onclick="selectTower('heavy')">Tung (100)</button>
-<button class="towerBtn speedBtn" onclick="toggleSpeed()">Hastighet x2</button>
+<div id="ui">
+<span>Liv: <b id="lives">20</b></span>
+<span>Penger: <b id="money">150</b></span>
+<span>Bølge: <b id="wave">1</b></span>
 </div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const TILE = 40;
-const ROWS = canvas.height / TILE;
-const COLS = canvas.width / TILE;
-
-let selectedTower = "normal";
-let speedMultiplier = 1;
-
-// ----------------------------
-//     FUNKSJON FOR Å VELGE TÅRN (Denne manglet!)
-// ----------------------------
-function selectTower(type) {
-   selectedTower = type;
-   
-   // Fjern "active" klassen fra alle tårn-knapper
-   document.getElementById("btn-normal").classList.remove("active");
-   document.getElementById("btn-fast").classList.remove("active");
-   document.getElementById("btn-heavy").classList.remove("active");
-   
-   // Legg til "active" på den valgte knappen
-   if (type === 'normal') document.getElementById("btn-normal").classList.add("active");
-   if (type === 'fast') document.getElementById("btn-fast").classList.add("active");
-   if (type === 'heavy') document.getElementById("btn-heavy").classList.add("active");
-}
-
-// ----------------------------
-//     HASTIGHETSKNAPP
-// ----------------------------
-function toggleSpeed() {
-   speedMultiplier = speedMultiplier === 1 ? 2 : 1;
-}
-
-// ----------------------------
-//     BANE
-// ----------------------------
-const path = [
-   {x:0,y:2},{x:1,y:2},{x:2,y:2},{x:3,y:2},{x:4,y:2},{x:5,y:2},{x:6,y:2},{x:7,y:2},{x:8,y:2},{x:9,y:2},{x:10,y:2},{x:11,y:2},{x:12,y:2},{x:13,y:2},{x:14,y:2},{x:15,y:2},
-   {x:15,y:3},{x:15,y:4},{x:15,y:5},
-   {x:14,y:5},{x:13,y:5},{x:12,y:5},{x:11,y:5},{x:10,y:5},{x:9,y:5},{x:8,y:5},{x:7,y:5},{x:6,y:5},{x:5,y:5},{x:4,y:5},{x:3,y:5},{x:2,y:5},{x:1,y:5},{x:0,y:5},
-   {x:0,y:6},{x:0,y:7},
-   {x:1,y:7},{x:2,y:7},{x:3,y:7},{x:4,y:7},{x:5,y:7},{x:6,y:7},{x:7,y:7},{x:8,y:7},{x:9,y:7},{x:10,y:7},{x:11,y:7},{x:12,y:7},{x:13,y:7},{x:14,y:7},{x:15,y:7},
-   {x:15,y:8},{x:15,y:9}
-];
 
 let towers = [];
 let enemies = [];
@@ -125,284 +86,167 @@ let bullets = [];
 let lives = 20;
 let money = 150;
 let wave = 1;
-let spawnTimer = 0;
-let enemiesToSpawn = 10;
 
-const livesEl = document.getElementById("lives");
-const moneyEl = document.getElementById("money");
-const waveEl = document.getElementById("wave");
+let selectedTower = null;
+const upgradeMenu = document.getElementById("upgradeMenu");
+const statsEl = document.getElementById("towerStats");
 
-function gridToPixel(g) {
-   return { x: g.x * TILE + TILE/2, y: g.y * TILE + TILE/2 };
+function gridToPixel(g){
+    return {x:g.x*TILE+TILE/2, y:g.y*TILE+TILE/2}
 }
 
-// ----------------------------
-//     MONSTERTYPER
-// ----------------------------
-class Enemy {
-   constructor(type) {
-       this.type = type;
-       this.pathIndex = 0;
-       const start = gridToPixel(path[0]);
-       this.x = start.x;
-       this.y = start.y;
-       if (type === "normal") {
-           this.speed = (1.2 + wave * 0.05);
-           this.hp = 25 + wave * 6;
-           this.color = "#ff4444";
-       }
-       if (type === "fast") {
-           this.speed = (2.5 + wave * 0.08);
-           this.hp = 12 + wave * 3;
-           this.color = "#ffee55";
-       }
-       if (type === "strong") {
-           this.speed = (0.7 + wave * 0.03);
-           this.hp = 80 + wave * 15;
-           this.color = "#b455ff";
-       }
-       this.radius = 12;
-       this.maxHp = this.hp;
-   }
-   update() {
-       const next = path[this.pathIndex + 1];
-       if (!next) {
-           lives--;
-           this.hp = 0;
-           return;
-       }
-       const target = gridToPixel(next);
-       const dx = target.x - this.x;
-       const dy = target.y - this.y;
-       const dist = Math.hypot(dx, dy);
-       const move = this.speed * speedMultiplier;
-       
-       if (dist < move) {
-           this.pathIndex++;
-       } else {
-           this.x += dx / dist * move;
-           this.y += dy / dist * move;
-       }
-   }
-   draw() {
-       ctx.fillStyle = this.color;
-       ctx.beginPath();
-       ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-       ctx.fill();
-       
-       // Helsebar
-       const w = 26;
-       const ratio = this.hp / this.maxHp;
-       ctx.fillStyle = "#000";
-       ctx.fillRect(this.x - w/2, this.y - this.radius - 8, w, 4);
-       ctx.fillStyle = "#0f0";
-       ctx.fillRect(this.x - w/2, this.y - this.radius - 8, w * ratio, 4);
-   }
-}
-
-// ----------------------------
-//     TÅRN
-// ----------------------------
+/* ---------------- TÅRN ---------------- */
 class Tower {
-   constructor(x, y, type) {
-       this.x = x;
-       this.y = y;
-       this.type = type;
-       if (type === "normal") {
-           this.range = 120;
-           this.fireRate = 35;
-           this.damage = 10;
-       }
-       if (type === "fast") {
-           this.range = 100;
-           this.fireRate = 15;
-           this.damage = 5;
-       }
-       if (type === "heavy") {
-           this.range = 150;
-           this.fireRate = 60;
-           this.damage = 25;
-       }
-       this.cooldown = 0;
-   }
-   update() {
-       this.cooldown -= speedMultiplier;
-       if (this.cooldown > 0) return;
-       
-       let target = null;
-       let closest = Infinity;
-       
-       for (const e of enemies) {
-           const d = Math.hypot(e.x - this.x, e.y - this.y);
-           if (d < this.range && d < closest) {
-               closest = d;
-               target = e;
-           }
-       }
-       
-       if (target) {
-           bullets.push(new Bullet(this.x, this.y, target, this.damage));
-           this.cooldown = this.fireRate;
-       }
-   }
-   draw() {
-       ctx.fillStyle = 
-           this.type === "normal" ? "#4a90e2" : 
-           this.type === "fast" ? "#50e3c2" : 
-           "#e94e77";
-       ctx.beginPath();
-       ctx.arc(this.x, this.y, 14, 0, Math.PI*2);
-       ctx.fill();
-       ctx.strokeStyle = "#333";
-       ctx.lineWidth = 2;
-       ctx.stroke();
-   }
+    constructor(x,y){
+        this.x=x; this.y=y;
+        this.damage=10;
+        this.fireRate=35;
+        this.range=120;
+        this.cooldown=0;
+    }
+    update(){
+        this.cooldown--;
+        if(this.cooldown>0) return;
+
+        let target=enemies.find(e=>Math.hypot(e.x-this.x,e.y-this.y)<this.range);
+        if(target){
+            bullets.push(new Bullet(this.x,this.y,target,this.damage));
+            this.cooldown=this.fireRate;
+        }
+    }
+    draw(){
+        ctx.fillStyle="#4a90e2";
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,14,0,Math.PI*2);
+        ctx.fill();
+    }
 }
 
-// ----------------------------
-//     KULER
-// ----------------------------
-class Bullet {
-   constructor(x, y, target, damage) {
-       this.x = x;
-       this.y = y;
-       this.target = target;
-       this.damage = damage;
-       this.speed = 6;
-       this.dead = false;
-   }
-   update() {
-       if (!this.target || this.target.hp <= 0) {
-           this.dead = true;
-           return;
-       }
-       const dx = this.target.x - this.x;
-       const dy = this.target.y - this.y;
-       const dist = Math.hypot(dx, dy);
-       const move = this.speed * speedMultiplier;
-       
-       if (dist < move) {
-           this.target.hp -= this.damage;
-           if (this.target.hp <= 0) money += 5;
-           this.dead = true;
-       } else {
-           this.x += dx / dist * move;
-           this.y += dy / dist * move;
-       }
-   }
-   draw() {
-       ctx.fillStyle = "#ffff66";
-       ctx.beginPath();
-       ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
-       ctx.fill();
-   }
+/* ---------------- KULER ---------------- */
+class Bullet{
+    constructor(x,y,target,damage){
+        this.x=x; this.y=y;
+        this.target=target;
+        this.damage=damage;
+        this.dead=false;
+    }
+    update(){
+        if(!this.target){this.dead=true;return;}
+        let dx=this.target.x-this.x;
+        let dy=this.target.y-this.y;
+        let d=Math.hypot(dx,dy);
+        if(d<4){
+            this.target.hp-=this.damage;
+            if(this.target.hp<=0) money+=5;
+            this.dead=true;
+        } else {
+            this.x+=dx/d*4;
+            this.y+=dy/d*4;
+        }
+    }
+    draw(){
+        ctx.fillStyle="#ff0";
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,4,0,Math.PI*2);
+        ctx.fill();
+    }
 }
 
-// ----------------------------
-//     SPILLLOGIKK
-// ----------------------------
-function isOnPath(x, y) {
-   return path.some(p => p.x === x && p.y === y);
+/* ---------------- FIENDER ---------------- */
+class Enemy{
+    constructor(){
+        this.x=0; this.y=240;
+        this.hp=40;
+    }
+    update(){ this.x+=0.5 }
+    draw(){
+        ctx.fillStyle="#f44";
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,12,0,Math.PI*2);
+        ctx.fill();
+    }
 }
 
-// Mus / Klikk logikk
-canvas.addEventListener("click", (e) => {
-   const rect = canvas.getBoundingClientRect();
-   const x = e.clientX - rect.left;
-   const y = e.clientY - rect.top;
-   
-   const gx = Math.floor(x / TILE);
-   const gy = Math.floor(y / TILE);
-   
-   // Sjekk om tårnet plasseres oppå stien eller et annet tårn
-   if (isOnPath(gx, gy)) return;
-   
-   // Enkel sjekk for å unngå tårn oppå tårn
-   const pixelPos = gridToPixel({x: gx, y: gy});
-   const existingTower = towers.find(t => t.x === pixelPos.x && t.y === pixelPos.y);
-   if (existingTower) return;
+/* ---------------- KLIKK ---------------- */
+canvas.addEventListener("click", e=>{
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    const y=e.clientY-rect.top;
 
-   const cost = 
-       selectedTower === "normal" ? 50 : 
-       selectedTower === "fast" ? 70 : 
-       100;
-       
-   if (money < cost) return;
-   
-   towers.push(new Tower(pixelPos.x, pixelPos.y, selectedTower));
-   money -= cost;
+    selectedTower=null;
+    upgradeMenu.style.display="none";
+
+    for(const t of towers){
+        if(Math.hypot(t.x-x,t.y-y)<15){
+            selectedTower=t;
+            showUpgradeMenu(x,y,t);
+            return;
+        }
+    }
+
+    if(money>=50){
+        towers.push(new Tower(x,y));
+        money-=50;
+    }
 });
 
-// ----------------------------
-//     SPAWNER
-// ----------------------------
-function spawnEnemy() {
-   let type = "normal";
-   if (wave >= 3 && Math.random() < 0.25) type = "fast";
-   if (wave >= 4 && Math.random() < 0.15) type = "strong";
-   enemies.push(new Enemy(type));
+/* ---------------- OPPGRADERING ---------------- */
+function showUpgradeMenu(x,y,t){
+    upgradeMenu.style.left=x+"px";
+    upgradeMenu.style.top=y+"px";
+    upgradeMenu.style.display="block";
+    updateStats();
 }
 
-function nextWave() {
-   wave++;
-   enemiesToSpawn = 10 + wave * 3;
-   spawnTimer = 0;
+function updateStats(){
+    statsEl.innerHTML=`
+    Skade: ${selectedTower.damage}<br>
+    Fire rate: ${selectedTower.fireRate}
+    `;
 }
 
-function updateGame() {
-   spawnTimer -= speedMultiplier;
-   if (enemiesToSpawn > 0) {
-       if (spawnTimer <= 0) {
-           spawnEnemy();
-           enemiesToSpawn--;
-           spawnTimer = 50;
-       }
-   } else if (enemies.length === 0) {
-       nextWave();
-   }
-
-   enemies.forEach(e => e.update());
-   towers.forEach(t => t.update());
-   bullets.forEach(b => b.update());
-   
-   enemies = enemies.filter(e => e.hp > 0);
-   bullets = bullets.filter(b => !b.dead);
-   
-   if (lives <= 0) {
-       alert("Game Over! Du nådde bølge " + wave);
-       location.reload();
-   }
-   
-   livesEl.textContent = lives;
-   moneyEl.textContent = money;
-   waveEl.textContent = wave;
+function upgradeDamage(){
+    if(money>=20){
+        selectedTower.damage+=5;
+        money-=20;
+        updateStats();
+    }
 }
 
-function drawGrid() {
-   for (let y = 0; y < ROWS; y++) {
-       for (let x = 0; x < COLS; x++) {
-           ctx.fillStyle = isOnPath(x, y) ? "#c2b280" : "#3b6b2a";
-           ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-           ctx.strokeStyle = "#447733"; // Litt tekstur på gresset
-           ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
-       }
-   }
+function upgradeSpeed(){
+    if(money>=20 && selectedTower.fireRate>10){
+        selectedTower.fireRate-=5;
+        money-=20;
+        updateStats();
+    }
 }
 
-function drawGame() {
-   ctx.clearRect(0,0,canvas.width,canvas.height);
-   drawGrid();
-   towers.forEach(t => t.draw());
-   enemies.forEach(e => e.draw());
-   bullets.forEach(b => b.draw());
+function sellTower(){
+    money+=30;
+    towers=towers.filter(t=>t!==selectedTower);
+    upgradeMenu.style.display="none";
 }
 
-function loop() {
-   updateGame();
-   drawGame();
-   requestAnimationFrame(loop);
-}
+/* ---------------- LOOP ---------------- */
+function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
+    if(Math.random()<0.01) enemies.push(new Enemy());
+
+    enemies.forEach(e=>e.update());
+    towers.forEach(t=>t.update());
+    bullets.forEach(b=>b.update());
+
+    enemies=enemies.filter(e=>e.hp>0);
+    bullets=bullets.filter(b=>!b.dead);
+
+    enemies.forEach(e=>e.draw());
+    towers.forEach(t=>t.draw());
+    bullets.forEach(b=>b.draw());
+
+    document.getElementById("money").textContent=money;
+    requestAnimationFrame(loop);
+}
 loop();
 </script>
 </body>
