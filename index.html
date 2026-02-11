@@ -2,252 +2,183 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Forbedret Tower Defence</title>
+<title>Cookie Clicker Supreme</title>
 <style>
-body {
-    background: #1e1e1e;
-    color: #eee;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 10px;
+body { font-family: Arial, sans-serif; text-align: center; background:#f8e5c0; margin:0; min-height:100vh; }
+#container { max-width:640px; margin:40px auto; background:#fff8e1; border-radius:24px; box-shadow:0 0 32px #b5823833; padding:35px 12px 30px; }
+#cookie { width:220px; height:220px; margin:0 auto 20px auto; background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Chocolate_Chip_Cookie.png') center/cover; border-radius:50%; border:4px solid #b58238; cursor:pointer; box-shadow:0 8px 28px #b58238aa; }
+#cookie:active { transform:scale(0.93);}
+h1 { margin-top:0; }
+#upgrades-area { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-top:26px;}
+.upgrade-card {
+  background: #ffeecc;
+  box-shadow: 0 0 8px #b5823833;
+  border-radius: 14px;
+  padding: 18px 14px 15px 14px;
+  min-width: 235px;
+  max-width: 260px;
+  flex: 1 1 235px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-#gameContainer {
-    margin: 10px auto;
-    position: relative;
-    width: 640px;
+.upgrade-card h3 { margin: 0 0 7px; font-size:1.20em;}
+.upgrade-desc { margin: 6px 0 7px 0; color:#502a00; font-size:1em;}
+.upgrade-lvl { margin-bottom:8px; color:#7c481c; }
+.upgrade-cost { margin-bottom:10px;}
+.upgrade-btn-card { 
+  padding: 7px 18px; border:none; border-radius:7px; background: #ffe29e; color:#7c481c;
+  font-size:1em; cursor:pointer; 
+  box-shadow: 0 2px 8px #b5823833;
+  min-width:150px;
 }
-canvas {
-    background: #3b6b2a;
-    border: 3px solid #555;
-    display: block;
-    margin: 0 auto;
-    cursor: crosshair;
-}
-#ui span { margin: 0 10px; }
-
-.towerBtn {
-    padding: 8px 12px;
-    margin: 5px;
-    border-radius: 6px;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
-}
-.normal { background:#4a90e2 }
-.fast { background:#50e3c2 }
-.heavy { background:#e94e77 }
-
-/* 🔹 OPPGRADERINGSMENY */
-#upgradeMenu {
-    position: absolute;
-    background: #222;
-    border: 2px solid #555;
-    padding: 10px;
-    display: none;
-    z-index: 10;
-}
-#upgradeMenu button {
-    margin: 4px;
-    width: 100%;
-}
+.upgrade-btn-card:disabled { background:#ccc; color:#666; cursor:not-allowed;}
+#rebirth-section {margin-top:18px;}
 </style>
 </head>
-
 <body>
-<h1>Forbedret Tower Defence</h1>
-
-<div id="gameContainer">
-    <canvas id="game" width="640" height="480"></canvas>
-
-    <!-- 🔹 Oppgraderingsmeny -->
-    <div id="upgradeMenu">
-        <div id="towerStats"></div>
-        <button onclick="upgradeDamage()">⬆ Skade (20)</button>
-        <button onclick="upgradeSpeed()">⚡ Hastighet (20)</button>
-        <button onclick="sellTower()">🗑️ Selg tårn</button>
-    </div>
+<div id="container">
+  <div id="cookie"></div>
+  <h1>🍪 Cookie Clicker Supreme</h1>
+  <div id="score">Cookies: 0</div>
+  <div>Per klikk: <b id="cpc">1</b> | Per sekund: <b id="cps">0</b></div>
+  <div id="upgrades-area"></div>
+  <div id="rebirth-section">
+    <b>Rebirths:</b> <span id="rebirth-count">0</span> |
+    <b>Total bonus:</b> <span id="rebirth-bonus">0</span>%
+  </div>
 </div>
-
-<div id="ui">
-<span>Liv: <b id="lives">20</b></span>
-<span>Penger: <b id="money">150</b></span>
-<span>Bølge: <b id="wave">1</b></span>
-</div>
-
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const TILE = 40;
+const REBIRTH_BONUS = 50;
+const REBIRTH_COST = 10000000000;
 
-let towers = [];
-let enemies = [];
-let bullets = [];
-let lives = 20;
-let money = 150;
-let wave = 1;
+// Alle sek-oppgraderinger gir 5x mer! Beskrivelser og tall er justert der det er per sekund.
+const upgrades = [
+  { id:"clicker", name:"Clicker-oppgradering", desc:"Gir +1 cookies per klikk.", baseCost:50, gives:{click:1} },
+  { id:"auto", name:"Auto Clicker", desc:"Gir +5 cookies per sekund.", baseCost:150, gives:{sec:5} },
+  { id:"superclick", name:"Superklikk", desc:"Gir +10 cookies per klikk.", baseCost:500, gives:{click:10} },
+  { id:"oven", name:"Ovnsoppgradering", desc:"Gir +25 cookies per sekund.", baseCost:1200, gives:{sec:25} },
+  { id:"cocoa", name:"Kakao-pulver", desc:"Gir +50 cookies per klikk.", baseCost:9000, gives:{click:50} },
+  { id:"factory", name:"Kjeksfabrikk", desc:"Gir +125 cookies per sekund.", baseCost:17500, gives:{sec:125} },
+  { id:"ovenmaster", name:"Evig Ovnsmeister", desc:"Gir +500 cookies per sekund.", baseCost:70000, gives:{sec:500} },
+  { id:"superinfinite", name:"Uendelig Superklikk", desc:"Gir +100 cookies per klikk.", baseCost:75000, gives:{click:100} },
+  { id:"starbaker", name:"Stjernebaker", desc:"Gir +1500 cookies per sekund.", baseCost:135000, gives:{sec:1500} },
+  { id:"heavensuper", name:"Himmelsk Superklikk", desc:"Gir +500 cookies per klikk.", baseCost:400000, gives:{click:500} },
+  { id:"universe", name:"Universrepresentant", desc:"Gir +6000 cookies per sekund.", baseCost:1200000, gives:{sec:6000} },
+  { id:"bigbang", name:"Big Bang Klikk", desc:"Gir +2500 cookies per klikk.", baseCost:3300000, gives:{click:2500} },
+  { id:"galaxy", name:"Galaktisk Ovn", desc:"Gir +25000 cookies per sekund.", baseCost:8000000, gives:{sec:25000} },
+  { id:"eternalcookie", name:"Evig Kjeks", desc:"Gir +10000 cookies per klikk.", baseCost:15000000, gives:{click:10000} },
+  { id:"quantumauto", name:"Kvantum Auto", desc:"Gir +100000 cookies per sekund.", baseCost:22000000, gives:{sec:100000} },
+  { id:"supernova", name:"Supernova Klikk", desc:"Gir +50000 cookies per klikk.", baseCost:55000000, gives:{click:50000} },
+  { id:"blackhole", name:"Sort Hull Auto", desc:"Gir +500000 cookies per sekund.", baseCost:130000000, gives:{sec:500000} },
+  { id:"multiverse", name:"Multivers Klapp", desc:"Gir +300000 cookies per klikk.", baseCost:260000000, gives:{click:300000} },
+  { id:"omnicookie", name:"Omni-Kjeks Maskin", desc:"Gir +5 000 000 cookies per sekund.", baseCost:999999999, gives:{sec:5000000} },
+  { id:"ultimateclick", name:"Ultimat Klikk", desc:"Gir +2 000 000 cookies per klikk.", baseCost:2500000000, gives:{click:2000000} },
+  { id:"rebirth", name:"REIRTH", desc:"Nullstiller alt & gir +50% bonus – kan kjøpes flere ganger.", baseCost:REBIRTH_COST, gives:{} }
+];
 
-let selectedTower = null;
-const upgradeMenu = document.getElementById("upgradeMenu");
-const statsEl = document.getElementById("towerStats");
-
-function gridToPixel(g){
-    return {x:g.x*TILE+TILE/2, y:g.y*TILE+TILE/2}
+let game = JSON.parse(localStorage.getItem("cookie_supreme")) || {
+  cookies:0, cookiesPerClick:1, cookiesPerSecond:0,
+  rebirths:0, rebirthBonus:0
+};
+for (const up of upgrades) {
+  if (typeof game[up.id+"Level"] !== "number") game[up.id+"Level"] = 0;
 }
 
-/* ---------------- TÅRN ---------------- */
-class Tower {
-    constructor(x,y){
-        this.x=x; this.y=y;
-        this.damage=10;
-        this.fireRate=35;
-        this.range=120;
-        this.cooldown=0;
-    }
-    update(){
-        this.cooldown--;
-        if(this.cooldown>0) return;
+const score = document.getElementById("score");
+const cpc = document.getElementById("cpc");
+const cps = document.getElementById("cps");
+const cookie = document.getElementById("cookie");
+const upgradesArea = document.getElementById("upgrades-area");
+const rebirthCount = document.getElementById("rebirth-count");
+const rebirthBonus = document.getElementById("rebirth-bonus");
 
-        let target=enemies.find(e=>Math.hypot(e.x-this.x,e.y-this.y)<this.range);
-        if(target){
-            bullets.push(new Bullet(this.x,this.y,target,this.damage));
-            this.cooldown=this.fireRate;
+function format(n){ return n.toLocaleString("no-NO"); }
+function rebirthMult(){ return 1 + (game.rebirthBonus || 0) / 100; }
+function getUpgradeCost(up){ return up.baseCost; }
+
+function update(){
+  score.textContent = "Cookies: " + format(game.cookies);
+  cpc.textContent = format(game.cookiesPerClick);
+  cps.textContent = format(game.cookiesPerSecond);
+  rebirthCount.textContent = game.rebirths || 0;
+  rebirthBonus.textContent = game.rebirthBonus || 0;
+
+  upgradesArea.innerHTML = "";
+  upgrades.forEach((up,i)=>{
+    const level = game[up.id+"Level"] || 0;
+    const cost = getUpgradeCost(up);
+
+    // Eget kort til hver oppgradering:
+    const card = document.createElement("div");
+    card.className = "upgrade-card";
+    const h3 = document.createElement("h3");
+    h3.textContent = up.name;
+    card.appendChild(h3);
+
+    const desc = document.createElement("div");
+    desc.className = "upgrade-desc";
+    desc.textContent = up.desc;
+    card.appendChild(desc);
+
+    const lvl = document.createElement("div");
+    lvl.className = "upgrade-lvl";
+    lvl.textContent = "Nivå: " + level;
+    card.appendChild(lvl);
+
+    const price = document.createElement("div");
+    price.className = "upgrade-cost";
+    price.textContent = "Kostnad: " + format(cost) + " 🍪";
+    card.appendChild(price);
+
+    const btn = document.createElement("button");
+    btn.className = "upgrade-btn-card";
+    btn.textContent = (up.id==="rebirth") ? "KJØP REBIRTH" : "KJØP";
+    btn.disabled = game.cookies < cost;
+    btn.onclick = ()=>{
+      // Rebirth-funksjon
+      if(up.id === "rebirth"){
+        if(game.cookies >= cost){
+          if(confirm("Rebirth nullstiller alt og gir +50% permanent bonus. Fortsette?")){
+            game.cookies -= cost;
+            game.rebirths = (game.rebirths||0)+1;
+            game.rebirthBonus = (game.rebirthBonus||0)+REBIRTH_BONUS;
+            game.cookies = 0;
+            game.cookiesPerClick = 1;
+            game.cookiesPerSecond = 0;
+            for(const upg of upgrades) game[upg.id+"Level"] = 0;
+            update();
+          }
         }
-    }
-    draw(){
-        ctx.fillStyle="#4a90e2";
-        ctx.beginPath();
-        ctx.arc(this.x,this.y,14,0,Math.PI*2);
-        ctx.fill();
-    }
-}
-
-/* ---------------- KULER ---------------- */
-class Bullet{
-    constructor(x,y,target,damage){
-        this.x=x; this.y=y;
-        this.target=target;
-        this.damage=damage;
-        this.dead=false;
-    }
-    update(){
-        if(!this.target){this.dead=true;return;}
-        let dx=this.target.x-this.x;
-        let dy=this.target.y-this.y;
-        let d=Math.hypot(dx,dy);
-        if(d<4){
-            this.target.hp-=this.damage;
-            if(this.target.hp<=0) money+=5;
-            this.dead=true;
-        } else {
-            this.x+=dx/d*4;
-            this.y+=dy/d*4;
+      } else {
+        if(game.cookies >= cost){
+          game.cookies -= cost;
+          game[up.id+"Level"] = level+1;
+          if(up.gives.click) game.cookiesPerClick += up.gives.click;
+          if(up.gives.sec) game.cookiesPerSecond += up.gives.sec;
+          update();
         }
-    }
-    draw(){
-        ctx.fillStyle="#ff0";
-        ctx.beginPath();
-        ctx.arc(this.x,this.y,4,0,Math.PI*2);
-        ctx.fill();
-    }
+      }
+    };
+    card.appendChild(btn);
+
+    upgradesArea.appendChild(card);
+  });
+
+  localStorage.setItem("cookie_supreme", JSON.stringify(game));
 }
 
-/* ---------------- FIENDER ---------------- */
-class Enemy{
-    constructor(){
-        this.x=0; this.y=240;
-        this.hp=40;
-    }
-    update(){ this.x+=0.5 }
-    draw(){
-        ctx.fillStyle="#f44";
-        ctx.beginPath();
-        ctx.arc(this.x,this.y,12,0,Math.PI*2);
-        ctx.fill();
-    }
-}
+cookie.onclick = () => {
+  game.cookies += Math.round(game.cookiesPerClick * rebirthMult());
+  update();
+};
 
-/* ---------------- KLIKK ---------------- */
-canvas.addEventListener("click", e=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=e.clientX-rect.left;
-    const y=e.clientY-rect.top;
+setInterval(() => {
+  game.cookies += Math.round(game.cookiesPerSecond * rebirthMult());
+  update();
+}, 1000);
 
-    selectedTower=null;
-    upgradeMenu.style.display="none";
-
-    for(const t of towers){
-        if(Math.hypot(t.x-x,t.y-y)<15){
-            selectedTower=t;
-            showUpgradeMenu(x,y,t);
-            return;
-        }
-    }
-
-    if(money>=50){
-        towers.push(new Tower(x,y));
-        money-=50;
-    }
-});
-
-/* ---------------- OPPGRADERING ---------------- */
-function showUpgradeMenu(x,y,t){
-    upgradeMenu.style.left=x+"px";
-    upgradeMenu.style.top=y+"px";
-    upgradeMenu.style.display="block";
-    updateStats();
-}
-
-function updateStats(){
-    statsEl.innerHTML=`
-    Skade: ${selectedTower.damage}<br>
-    Fire rate: ${selectedTower.fireRate}
-    `;
-}
-
-function upgradeDamage(){
-    if(money>=20){
-        selectedTower.damage+=5;
-        money-=20;
-        updateStats();
-    }
-}
-
-function upgradeSpeed(){
-    if(money>=20 && selectedTower.fireRate>10){
-        selectedTower.fireRate-=5;
-        money-=20;
-        updateStats();
-    }
-}
-
-function sellTower(){
-    money+=30;
-    towers=towers.filter(t=>t!==selectedTower);
-    upgradeMenu.style.display="none";
-}
-
-/* ---------------- LOOP ---------------- */
-function loop(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    if(Math.random()<0.01) enemies.push(new Enemy());
-
-    enemies.forEach(e=>e.update());
-    towers.forEach(t=>t.update());
-    bullets.forEach(b=>b.update());
-
-    enemies=enemies.filter(e=>e.hp>0);
-    bullets=bullets.filter(b=>!b.dead);
-
-    enemies.forEach(e=>e.draw());
-    towers.forEach(t=>t.draw());
-    bullets.forEach(b=>b.draw());
-
-    document.getElementById("money").textContent=money;
-    requestAnimationFrame(loop);
-}
-loop();
+update();
 </script>
 </body>
 </html>
